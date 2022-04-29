@@ -1,11 +1,13 @@
+# frozen_string_literal: true
+
 class MessagesController < ApplicationController
-  before_action :set_message, only: [:show, :update, :destroy]
+  before_action :set_message, only: %i[show update destroy]
 
   # GET /messages
   def index
-    @messages = Message.all
+    @messages = room.messages.includes(:user).order(id: :desc).limit(30)
 
-    render json: @messages
+    render json: ActiveModelSerializers::SerializableResource.new(@messages, each_serializer: MessageSerializer).as_json
   end
 
   # GET /messages/1
@@ -15,10 +17,10 @@ class MessagesController < ApplicationController
 
   # POST /messages
   def create
-    @message = Message.new(message_params)
+    @message = room.messages.new(message_params)
 
     if @message.save
-      render json: @message, status: :created, location: @message
+      render json: @message.as_json(include: %i[user room]), status: :created
     else
       render json: @message.errors, status: :unprocessable_entity
     end
@@ -39,13 +41,18 @@ class MessagesController < ApplicationController
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_message
-      @message = Message.find(params[:id])
-    end
 
-    # Only allow a list of trusted parameters through.
-    def message_params
-      params.require(:message).permit(:user_id, :room_id, :message)
-    end
+  def room
+    @room ||= Room.find(params[:room_id])
+  end
+
+  # Use callbacks to share common setup or constraints between actions.
+  def set_message
+    @message = room.messages.find(params[:id])
+  end
+
+  # Only allow a list of trusted parameters through.
+  def message_params
+    params.require(:message).permit(:user_id, :room_id, :message)
+  end
 end
