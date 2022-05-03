@@ -5,9 +5,16 @@ class MessagesController < ApplicationController
 
   # GET /messages
   def index
-    @messages = room.messages.includes(:user).order(id: :desc).limit(30)
+    @messages = room.messages.includes(:user, room: { messages: :user }).order(id: :desc).limit(limit)
+    @messages = @messages.where('id > ?', params[:start_id].to_i) if params[:start_id]
+    @messages = @messages.where('id < ?', params[:end_id].to_i) if params[:end_id]
 
-    render json: ActiveModelSerializers::SerializableResource.new(@messages, each_serializer: MessageSerializer).as_json
+    render json: {
+      data: ActiveModelSerializers::SerializableResource.new(@messages, each_serializer: MessageSerializer).as_json,
+      first_id: @messages.first&.id,
+      last_id: @messages.last&.id,
+      more: @messages.size == limit
+    }
   end
 
   # GET /messages/1
@@ -54,5 +61,9 @@ class MessagesController < ApplicationController
   # Only allow a list of trusted parameters through.
   def message_params
     params.require(:message).permit(:user_id, :room_id, :message)
+  end
+
+  def limit
+    (params[:limit] || 30).to_i
   end
 end

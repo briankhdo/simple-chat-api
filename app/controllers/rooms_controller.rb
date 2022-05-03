@@ -3,9 +3,10 @@ class RoomsController < ApplicationController
 
   # GET /rooms
   def index
-    @rooms = Room.all
+    @rooms = Room.includes(messages: :user)
 
-    render json: @rooms
+    render json:
+       ActiveModelSerializers::SerializableResource.new(@rooms, each_serializer: RoomSerializer).as_json
   end
 
   # GET /rooms/1
